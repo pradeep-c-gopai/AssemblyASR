@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recording Component</title>
+    <script src="https://cdn.jsdelivr.net/npm/recordrtc"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+</head>
+<body>
+    <div style="display: flex; flex-direction: column; align-items: center;">
+        <div style="display: flex; flex-direction: row; justify-content: center; margin: 20px;">
+            <button id="startButton" style="background-color: transparent; color: white; padding: 2px 5px; border: solid black; border-width: 1.5px; cursor: pointer; border-radius: 50%;">
+                <i class="fa fa-microphone-slash" style="color: black; font-size:27px; margin: 2px 3.5px;"></i>
+            </button>
+            <!-- <button id="stopButton" style="background-color: #007BFF; color: white; padding: 10px 20px; margin: 0 10px; border: none; cursor: pointer;" disabled>
+                Stop Recording
+            </button> -->
+        </div>
+        <h3 style="text-align: center; font-size: 24px;">Transcription:</h3>
+        <textarea id="transcriptionTextarea" style="width: 700px; height: 200px; margin: 20px; padding: 10px;"></textarea>
+    </div>
+
+    <script>
+        const startButton = document.getElementById("startButton");
+        const stopButton = document.getElementById("stopButton");
+        const transcriptionTextarea = document.getElementById("transcriptionTextarea");
+        const microphoneIcon = document.querySelector("#startButton i");
+        let isRecording = false;
+        let audioStream = null;
+        let recorder = null;
+
+        // startButton.addEventListener("click", (e) => {
+        //     if(isRecording == false){
+        //         startRecording
+        //     }
+        //     else{
+        //         stopRecording
+        //     }
+        // });
+
+        startButton.addEventListener("click", () => {
+            if (isRecording === false) {
+                // Start recording
+                console.log('Recording Started!!!');
+                isRecording = true;
+                microphoneIcon.className = "fa fa-microphone";
+                microphoneIcon.style.color = "red";
+                startRecording();
+            } else {
+                // Stop recording
+                console.log('Recording Stopped!!!');
+                isRecording = false;
+                microphoneIcon.className = "fa fa-microphone-slash";
+                microphoneIcon.style.color = "black";
+                stopRecording();
+            }
+        });
+
+        function startRecording() {
+            navigator.mediaDevices
+                .getUserMedia({ audio: true })
+                .then((stream) => {
+                    recorder = RecordRTC(stream, { type: "audio" });
+                    recorder.startRecording();
+                    isRecording = true;
+                    audioStream = stream;
+                    // startButton.disabled = true;
+                    // stopButton.disabled = false;
+                })
+                .catch((error) => {
+                    console.error("Error accessing microphone:", error);
+                });
+        }
+
+        function stopRecording() {
+            recorder.stopRecording(() => {
+                isRecording = false;
+                // startButton.disabled = false;
+                // stopButton.disabled = true;
+                const audioBlob = recorder.getBlob();
+                sendAudioToServer(audioBlob);
+            });
+        }
+
+        function sendAudioToServer(audioBlob) {
+            const formData = new FormData();
+            formData.append("audio", audioBlob, "audio.wav");
+
+            // Replace the URL with your server's endpoint
+            fetch("http://localhost:3000/transcribe", {
+                method: "POST",
+                body: formData,
+            })
+                .then((response) => response.json())
+                .then((data) => {
+                    transcriptionTextarea.value = data.text;
+                })
+                .catch((error) => {
+                    console.error("Error:", error);
+                });
+        }
+    </script>
+</body>
+</html>
